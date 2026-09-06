@@ -8,6 +8,35 @@ let canvas;
 let startTime;
 let chunkSize = 38;
 
+const epdSpecs = {
+	"01": { width: 400, height: 300 },
+	"02": { width: 400, height: 300 },
+	"03": { width: 400, height: 300 },
+	"04": { width: 104, height: 212, oldRamFill: "FF" },
+};
+
+function getEpdSpec() {
+	const epdDriver = document.getElementById("epddriver")?.value || "01";
+	return epdSpecs[epdDriver] || epdSpecs["01"];
+}
+
+function applyCanvasSize() {
+	if (!canvas) {
+		canvas = document.getElementById('canvas');
+	}
+	if (!canvas) return;
+
+	const spec = getEpdSpec();
+	if (canvas.width !== spec.width || canvas.height !== spec.height) {
+		canvas.width = spec.width;
+		canvas.height = spec.height;
+		const ctx = canvas.getContext("2d");
+		ctx.fillStyle = 'white';
+		ctx.fillRect(0, 0, canvas.width, canvas.height);
+		document.getElementById('cmdIMAGE').value = '';
+	}
+}
+
 function resetVariables() {
 	gattServer = null;
 	epdService = null;
@@ -57,13 +86,13 @@ async function clearscreen() {
 }
 
 async function sendIMGArray(imgArray, type = 'bw'){
-	const count = Math.round(imgArray.length / chunkSize);
+	const count = Math.ceil(imgArray.length / chunkSize);
 	let chunkIdx = 0;
 
 	for (let i = 0; i < imgArray.length; i += chunkSize) {
 		let currentTime = (new Date().getTime() - startTime) / 1000.0;
 		let chunk = imgArray.substring(i, i + chunkSize);
-		setStatus(`发送${type === 'bwr' ? "红色" : '黑白'}块: ${chunkIdx+1}/${count+1}, 用时: ${currentTime}s`);
+		setStatus(`发送${type === 'bwr' ? "红色" : '黑白'}块: ${chunkIdx+1}/${count}, 用时: ${currentTime}s`);
 		addLog(`发送块: ${chunk}`);
 		await sendCommand(hexToBytes(`04${chunk}`))
 		chunkIdx++;
@@ -74,13 +103,18 @@ async function sendimg(cmdIMG) {
 	startTime = new Date().getTime();
 	const epdDriver = document.getElementById("epddriver").value;
 	const imgArray = cmdIMG.replace(/(?:\r\n|\r|\n|,|0x| )/g, '');
-	const bwArrLen = (canvas.width/8) * canvas.height * 2;
+	const planeHexLen = Math.ceil(canvas.width / 8) * canvas.height * 2;
 
-	if (imgArray.length == bwArrLen * 2) {
+	if (epdDriver === "04") {
 		await sendcmd("0310");
-		await sendIMGArray(imgArray.slice(0, bwArrLen - 1));
+		await sendIMGArray(getEpdSpec().oldRamFill.repeat(planeHexLen / 2));
 		await sendcmd("0313");
-		await sendIMGArray(imgArray.slice(bwArrLen), 'bwr');
+		await sendIMGArray(imgArray.slice(0, planeHexLen));
+	} else if (imgArray.length == planeHexLen * 2) {
+		await sendcmd("0310");
+		await sendIMGArray(imgArray.slice(0, planeHexLen));
+		await sendcmd("0313");
+		await sendIMGArray(imgArray.slice(planeHexLen), 'bwr');
 	} else {
 		await sendcmd(epdDriver === "03" ? "0310" : "0313");
 		await sendIMGArray(imgArray);
@@ -157,6 +191,7 @@ async function connect() {
 			addLog(`> 收到配置：${bytesToHex(event.target.value.buffer)}`);
 			document.getElementById("epdpins").value = bytesToHex(event.target.value.buffer.slice(0, 7));
 			document.getElementById("epddriver").value = bytesToHex(event.target.value.buffer.slice(7, 8));
+			applyCanvasSize();
 		});
 
 		await sendcmd("01");
@@ -253,9 +288,12 @@ function convert_dithering() {
 
 document.body.onload = () => {
 	canvas = document.getElementById('canvas');
+	applyCanvasSize();
 
 	updateButtonStatus();
-	bytes2canvas(hexToBytes(document.getElementById('cmdIMAGE').value), canvas);
+	if (document.getElementById('cmdIMAGE').value) {
+		bytes2canvas(hexToBytes(document.getElementById('cmdIMAGE').value), canvas);
+	}
 
 	document.getElementById('dithering').value = 'none';
 }

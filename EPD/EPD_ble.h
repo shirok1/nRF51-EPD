@@ -62,6 +62,7 @@ enum EPD_DRIVER_IDS
     EPD_DRIVER_4IN2 = 1,
     EPD_DRIVER_4IN2_V2,
     EPD_DRIVER_4IN2B_V2,
+    EPD_DRIVER_2IN13,
 };
 
 /**@brief EPD driver structure.

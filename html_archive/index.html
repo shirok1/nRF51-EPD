@@ -1,7 +1,7 @@
 <html>
 
 <head>
-	<title>4.2 寸电子墨水屏蓝牙控制器</title>
+	<title>电子墨水屏蓝牙控制器</title>
 	<style type="text/css">
 		.main { width: 800px; margin: 0 auto;}
 		h3 { padding-bottom: .3em; border-bottom: 1px solid #CCC; }
@@ -20,15 +20,16 @@
 
 <body>
 	<div class="main">
-		<h3>4.2 寸电子墨水屏蓝牙控制器（nRF51）</h3>
+		<h3>电子墨水屏蓝牙控制器（nRF51）</h3>
 		<fieldset>
 			<legend>蓝牙</legend>
 			<div style="float: right;">
 				驱动:
-				<select id="epddriver">
+				<select id="epddriver" onchange="applyCanvasSize(); convert_dithering();">
 					<option value="01">EPD_4in2</option>
 					<option value="02">EPD_4in2_V2</option>
 					<option value="03">EPD_4in2b_V2</option>
+					<option value="04">EPD_2in13</option>
 				</select>
 				引脚:
 				<input id="epdpins" type="text" value="">
@@ -84,7 +85,7 @@
 		<fieldset>
 			<legend>提示</legend>
 			<ul>
-				<li><b>驱动选择：</b>黑白屏可尝试 EPD_4in2 / EPD_4in2_V2, 三色屏选择 EPD_4in2b_V2 (选错驱动可能会导致任何未知的异常，重启即可恢复）</li>
+				<li><b>驱动选择：</b>4.2 黑白屏可尝试 EPD_4in2 / EPD_4in2_V2，4.2 三色屏选择 EPD_4in2b_V2，2.13 屏选择 EPD_2in13 (选错驱动可能会导致任何未知的异常，重启即可恢复）</li>
 				<li><b>引脚配置：</b>格式为十六进制，顺序：MOSI/SCLK/CS/DC/ST/BUSY/BS，必须按此顺序包含完整的 7 个引脚配置（没有用到的引脚可配置为 <code>FF</code>）</li>
 				<li>
 					<b>指令列表（指令和参数全部要使用十六进制）：</b>

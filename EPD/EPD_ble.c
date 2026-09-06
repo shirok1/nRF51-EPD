@@ -21,6 +21,7 @@
 #include "EPD_4in2.h"
 #include "EPD_4in2_V2.h"
 #include "EPD_4in2b_V2.h"
+#include "EPD_2in13.h"
 #include "EPD_ble.h"
 
 #define BLE_EPD_CONFIG_ADDR                (NRF_FICR->CODEPAGESIZE * (NRF_FICR->CODESIZE - 1)) // Last page of the flash
@@ -44,6 +45,9 @@ static epd_driver_t epd_drivers[] = {
     {EPD_DRIVER_4IN2B_V2, EPD_4IN2B_V2_Init, EPD_4IN2B_V2_Clear,
      EPD_4IN2B_V2_SendCommand, EPD_4IN2B_V2_SendData,
      EPD_4IN2B_V2_UpdateDisplay, EPD_4IN2B_V2_Sleep},
+    {EPD_DRIVER_2IN13, EPD_2IN13_Init, EPD_2IN13_Clear,
+     EPD_2IN13_SendCommand, EPD_2IN13_SendData,
+     EPD_2IN13_UpdateDisplay, EPD_2IN13_Sleep},
 };
 
 static epd_driver_t *epd_driver_get(uint8_t id)
