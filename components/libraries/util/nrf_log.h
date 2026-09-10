@@ -469,7 +469,7 @@ uint32_t log_raw_uart_read_input(char* p_char);
 
 // Empty definitions
 
-__INLINE int dummy_func(void* ignore)
+static __INLINE int dummy_func(void* ignore)
 {
     UNUSED_PARAMETER(ignore);
     return NRF_SUCCESS;

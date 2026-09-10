@@ -80,3 +80,5 @@
 
 EventRecorderStub.scvd
 JLinkLog.txt
+# GCC build outputs
+/build/

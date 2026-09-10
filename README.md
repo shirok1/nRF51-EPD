@@ -86,9 +86,90 @@
 
 ## 🛠️ 开发指南
 
-### 环境要求
-- Keil 版本：≤ 5.36
-  > 由于 nRF51 SDK 仅支持 ARM 编译器 V5 版本，请勿使用更高版本的 Keil。从 5.37 版本开始 Keil 已经不再内置 V5 版本编译器。
+### GCC + Make（推荐）
+
+仓库已包含所需 Nordic SDK 源码，无需 Keil 或额外下载 SDK。
+需要 GNU Make 和完整的 Arm GNU Embedded 工具链（包含 newlib-nano）。macOS 安装：
+
+```sh
+brew install --cask gcc-arm-embedded
+```
+
+在项目根目录运行：
+
+```sh
+make -j4           # 发布版：build/release/EPD.{elf,hex,bin,map}
+make DEBUG=1 -j4   # 含 RTT 日志和错误现场的调试版：build/debug/
+make size         # 查看发布版大小
+make clean        # 清理两种构建产物
+```
+
+已使用 Arm GNU Toolchain 15.3.Rel1 编译验证。工具链不在 PATH 时，可指定
+`make CROSS_COMPILE=/path/to/bin/arm-none-eabi-`。修改源码或头文件后，Make 会增量编译。
+调试版仍使用 `-Os` 以适应小容量芯片，并保留 `-g3` 调试信息。
+
+默认对应 Keil 的 nRF51822 xxAB 配置（128 KiB Flash、16 KiB RAM）及 S110 8.0.0：
+
+- 应用 Flash 从 `0x18000` 开始，至 `0x1F800` 之前；最后两页共 2 KiB 留给 pstorage 配置和交换页。
+- 应用 RAM 为 `0x20002000`–`0x20004000`，构建预留 2 KiB 栈和 512 B 堆。
+- 链接脚本检查 Flash 边界及静态数据、堆、栈的空间；运行时栈用量仍需在硬件上验证。
+
+`EPD.hex` **仅包含应用**。首次刷机仍需先烧录仓库中的
+`components/softdevice/s110/hex/s110_nrf51_8.0.0_softdevice.hex`，再烧录应用 HEX。
+HEX 自带地址；若使用 BIN，应用烧录地址为 `0x18000`。默认 `make` 只构建；刷写命令见下节。
+
+旧驱动中有未使用代码的警告；newlib 的 `nosys` 文件读写桩也可能产生链接警告，
+因为裸机没有文件系统。调试日志使用 RTT。编译通过不等于已验证实机蓝牙及屏幕行为。
+
+### CMSIS-DAP + OpenOCD 刷写（开源）
+
+支持标准 CMSIS-DAP USB 调试器，通过 SWD 连接，默认无需接 RESET。
+Sipeed SLogic Combo 8 需按键切换到**绿色指示灯（DAPLink）**，USB 设备名应为
+`RV CMSIS-DAP`。按面板左侧 DAPLink 线序接线：`TMS` 接目标 `SWDIO`，
+`TCK` 接目标 `SWCLK`，`GND` 共地；SWD 不使用 `TDI/TDO`。
+参见 [Sipeed DAPLink 文档](https://en.wiki.sipeed.com/hardware/en/logic_analyzer/combo8/use_daplink_function.html)。
+
+macOS 安装 OpenOCD（配置已在 0.12.0 上验证）：
+
+```sh
+brew install openocd
+```
+
+接线前断开电源，根据板上丝印或原理图找到焊盘：
+
+| 调试器 | 墨水屏板 |
+| --- | --- |
+| SWDIO | SWDIO |
+| SWCLK / SWCK | SWCLK |
+| GND | GND |
+| VTref（如果有） | 目标板 VDD，作为电平参考 |
+
+目标板需要供电，SWD 电平必须与板上 VDD 相容。VTref 通常是输入，不能当作供电输出。
+如用调试器的 3.3V 输出供电，先确认板子支持 3.3V，并断开电池或其他电源；不要接 5V。
+
+```sh
+make probe          # 检查调试器和目标连接，不擦写 Flash
+make flash-all      # 首次安装：全片擦除，然后依次烧录并校验 S110 和应用
+make flash          # 日后更新：只擦写应用占用的扇区，保留 S110 和配置存储
+make DEBUG=1 flash  # 烧录调试版
+```
+
+**`flash-all` 会清除原固件、UICR 和保存的屏幕/引脚配置。** 如需保留原固件或设置，先备份。
+默认构建仍按 128 KiB Flash / 16 KiB RAM 配置；不要单独烧录应用来替代首次安装。
+成功烧录后会校验并复位运行，必要时重新上电。
+
+连接不稳定时可降低 SWD 频率，例如 `make probe SWD_SPEED=100` 或
+`make flash SWD_SPEED=100`（单位 kHz）。若提示 `unable to find a matching CMSIS-DAP device`，
+先检查 USB 数据线、调试器模式和系统是否识别调试器；这一步还未连接到目标 MCU。
+若调试器已识别但 MCU 连接失败，再检查供电、共地、SWD 接线及芯片读保护状态。
+
+配置使用 OpenOCD 自带的 `interface/cmsis-dap.cfg` 和 `target/nrf51.cfg`；
+刷写采用 HEX 自带地址，无需手填地址。
+
+### Keil（可选）
+
+保留原工程，使用带 ARM Compiler 5 的 Keil（如 ≤ 5.36）。这个限制来自现有 Keil
+工程配置，并非 Nordic SDK 只能使用 ARM Compiler 5。
 
 ### 项目配置
 提供三个编译目标：
